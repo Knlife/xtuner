@@ -83,9 +83,12 @@ def get_low_latency_buffer(
 
     # Allocate a buffer if not existed or not enough buffer size
     if _buffer is None:
-        # NOTES: for best performance, the QP number **must** be equal to the number of the local experts
+        # This buffer also runs normal internode kernels: QPs must equal the
+        # channel count (num_sms / 2) or be at least num_sms.
         assert num_experts % group.size() == 0
         num_qps_per_rank = max(num_experts // group.size(), Buffer.num_sms // 2)
+        if Buffer.num_sms // 2 < num_qps_per_rank < Buffer.num_sms:
+            num_qps_per_rank = Buffer.num_sms
         _buffer = Buffer(
             group,
             num_nvl_bytes,
